@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="Apache 2.0" />
 </p>
 
-# SCI Healthcare — Indexer &amp; API | [Documentation](https://sci-healthcare.gitbook.io/docs)
+# SCI Healthcare — Indexer &amp; API | [Documentation](https://otobongdev.github.io/sci-healthcare-contracts/)
 
 Indexes Soroban contract events from the [SCI Healthcare care-voucher protocol](https://github.com/otobongdev/sci-healthcare-contracts) into a queryable read model, and serves it over a read-only HTTP API.
 
