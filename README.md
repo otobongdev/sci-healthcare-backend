@@ -1,0 +1,152 @@
+<p align="center">
+  <img src="docs/banner.png" alt="SCI Healthcare" width="640" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/sci-healthcare/sci-healthcare-backend/actions/workflows/ci.yml">
+    <img src="https://github.com/sci-healthcare/sci-healthcare-backend/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <img src="https://img.shields.io/badge/node-22-green" alt="node 22" />
+  <img src="https://img.shields.io/badge/fastify-5.12-black" alt="fastify" />
+  <img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="Apache 2.0" />
+</p>
+
+# SCI Healthcare — Indexer &amp; API | [Documentation](https://sci-healthcare.gitbook.io/docs)
+
+Indexes Soroban contract events from the [SCI Healthcare care-voucher protocol](https://github.com/sci-healthcare/sci-healthcare-contracts) into a queryable read model, and serves it over a read-only HTTP API.
+
+The ledger is the source of truth. This service exists because a ledger cannot answer "show me every voucher this clinic is waiting on" without scanning it. Everything here is a projection: delete the database, replay from the deploy ledger, and you get the same rows back.
+
+## Maintainers | [Telegram](https://t.me/YOUR_TELEGRAM_GROUP)
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/adelekevat.png" width="140" alt="Maintainer" />
+      <br /><br />
+      <strong>Adeleke | Backend &amp; Indexer</strong>
+      <br /><br />
+      <a href="https://github.com/adelekevat">adelekevat</a>
+      <br />
+      <a href="https://t.me/YOUR_TELEGRAM_HANDLE">Telegram</a>
+    </td>
+  </tr>
+</table>
+
+## Two properties worth stating up front
+
+**It holds no keys and signs nothing.** Every state change in this protocol is a transaction signed in the user's wallet and submitted straight to Soroban RPC by the browser. This service is not in the write path. There is no custody here to steal.
+
+**It stores no patient data.** The only patient-linked value is `beneficiaryRef`, an opaque 32-byte HMAC computed in the user's browser under a key that never leaves it. Nothing is written here that is not already public on chain, so a database breach is not a health-data breach.
+
+## Architecture
+
+```
+  Soroban RPC ──getEvents──> Indexer ──> SQLite / Postgres ──> Fastify (read-only)
+                             (cursor,                                   │
+                              idempotent                                ▼
+                              upserts)                              Frontend
+```
+
+The indexer polls on an interval, applies each event to the read model, and only then advances its cursor — so a crash mid-batch replays rather than skips. Handlers are idempotent upserts keyed by on-chain id, which makes replay safe.
+
+## API
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Liveness |
+| `GET /ready` | Readiness, including how many ledgers the indexer trails the chain by |
+| `GET /stats` | Protocol counters for the dashboard |
+| `GET /providers` | Verified clinics, filterable by `status`, `country`, `q` |
+| `GET /providers/:address` | One clinic and its service catalogue |
+| `GET /vouchers` | Vouchers by `funder`, `provider`, `beneficiaryRef` or `status` |
+| `GET /vouchers/:id` | One voucher, with its care receipt if settled |
+| `GET /receipts?beneficiaryRef=` | A patient's settled care history |
+
+`GET /vouchers` **requires at least one filter**. An unfiltered dump of every voucher is not a useful endpoint and invites scraping.
+
+`/receipts` requires an exact `beneficiaryRef`. Because that value is an HMAC under a key held by the patient, the endpoint cannot be walked to enumerate people.
+
+### Example
+
+```bash
+curl "http://localhost:8080/providers?status=Active" | jq
+curl "http://localhost:8080/vouchers?provider=GDOOCNK2...ZKBK" | jq
+```
+
+```json
+{
+  "total": 1,
+  "providers": [
+    {
+      "address": "GDOOCNK2HL6TB2Y7FDYNNMG4GTM2PNPY4XCTWG2INFPYYVA66FCPZKBK",
+      "name": "Ikeja General Clinic",
+      "country": "NG",
+      "status": "Active",
+      "services": [
+        { "code": 101, "label": "Outpatient consult", "price": "30000000", "priceDisplay": "3.0000000" }
+      ]
+    }
+  ]
+}
+```
+
+Amounts are `i128` on chain and are returned as **decimal strings**. Parsing one into a JavaScript number loses precision above 2^53 — use `BigInt`.
+
+## Quick start
+
+```bash
+git clone https://github.com/sci-healthcare/sci-healthcare-backend
+cd sci-healthcare-backend
+npm install
+cp .env.example .env          # fill in the contract ids below
+npx prisma generate
+npx prisma db push
+npm run dev
+```
+
+## Environment
+
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `PORT` | HTTP port | `8080` |
+| `HOST` | Bind address | `0.0.0.0` |
+| `LOG_LEVEL` | pino level | `info` |
+| `CORS_ORIGIN` | Comma-separated allowed origins | `http://localhost:3000` |
+| `DATABASE_URL` | Resolved **relative to `prisma/`** | `file:./dev.db` |
+| `SOROBAN_RPC_URL` | Soroban RPC endpoint | `https://soroban-testnet.stellar.org` |
+| `NETWORK_PASSPHRASE` | Network passphrase | `Test SDF Network ; September 2015` |
+| `REGISTRY_CONTRACT_ID` | Registry contract | `CBXRNV3CSR7VQFKJJ76GVTHGILONZECFRXR4SKO5OHYHM5WQU6RLFXWX` |
+| `VOUCHER_CONTRACT_ID` | Voucher escrow | `CAMO4ITIU22HSBO2WGV4MQSSKOE3EOVUEJOVYLBYPFW32VYZOTJ2XE7N` |
+| `RECEIPT_CONTRACT_ID` | Care receipts | `CCZGVNCX6OHRJ44I76QWWWMYP7K6JZDXFUIMPRUFWQCHZEHRA6WAZJ6Y` |
+| `USDC_CONTRACT_ID` | Settlement token | `CCKJV474HALEXYJC6URWG2QMUDPH5LY2SKAYA2S4TFHJTXW7OU4OAERQ` |
+| `INDEXER_START_LEDGER` | Ledger to index from; `0` means start at the tip | `4465529` |
+| `INDEXER_POLL_MS` | Poll interval | `5000` |
+
+Set `INDEXER_START_LEDGER` to the deployment ledger. Leaving it at `0` starts at the current tip and silently skips all prior history. Soroban RPC also only retains a rolling window of ledgers (about 7 days on testnet) — an indexer that falls further behind than the window cannot catch up, and `/ready` will say so rather than pretend otherwise.
+
+## Deploying
+
+Suited to a platform that runs long-lived processes with a database attached, such as Render.
+
+- Runtime: Node 22
+- Build: `npm ci && npx prisma generate && npm run build`
+- Start: `npm run db:migrate && npm start`
+- Switch `provider` in `prisma/schema.prisma` from `sqlite` to `postgresql`
+- Provision the database in the **same region** and use its internal connection string
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md). It documents the one trap this codebase has already hit: contract event fields marked `#[topic]` arrive in the topic list, not the data map, and reading them off the data map corrupts rows silently rather than crashing.
+
+Security reports go through [SECURITY.md](SECURITY.md).
+
+## Contributors
+
+<a href="https://github.com/sci-healthcare/sci-healthcare-backend/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=sci-healthcare/sci-healthcare-backend" />
+</a>
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

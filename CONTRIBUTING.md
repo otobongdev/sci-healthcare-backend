@@ -1,0 +1,71 @@
+# Contributing to SCI Healthcare Backend
+
+This service indexes Soroban contract events into a queryable read model and
+serves them over a read-only HTTP API.
+
+## Setup
+
+```bash
+npm install
+cp .env.example .env        # fill in contract ids from the contracts repo
+npx prisma generate
+npx prisma db push
+npm run dev
+```
+
+You need contract ids from a deployment. Either run `scripts/deploy.sh` in
+`sci-healthcare-contracts`, or use the testnet addresses in that repo's README.
+
+```bash
+npm run typecheck
+npm test
+```
+
+## Non-negotiables
+
+- **The database is a projection, never a source of truth.** Deleting it and
+  replaying from the deploy ledger must reproduce it exactly. Do not add a
+  column that cannot be derived from on-chain events.
+- **This service is read-only and holds no keys.** It never signs or submits a
+  transaction. Every write is signed in the user's wallet. Any PR that adds a
+  signing key to this service will be rejected.
+- **Never store patient-identifying data.** Only the opaque `beneficiaryRef`.
+  Nothing may be written here that is not already public on chain.
+- **i128 amounts are strings, never numbers.** `Number` silently loses precision
+  above 2^53. Use `BigInt` for arithmetic and store decimal strings.
+- **Event handlers must be idempotent.** The indexer replays on crash, so use
+  upserts keyed by on-chain id.
+
+## Decoding events
+
+The trap this codebase has already hit once: fields marked `#[topic]` in the
+Rust event struct are published in the event's **topic list**, not in its data
+map. Reading them off the data map yields `undefined`, which then stringifies
+into the database as the literal text `"undefined"` — a silent corruption, not a
+crash.
+
+`TOPIC_FIELDS` in `src/stellar/events.ts` restores names onto positional topic
+values and **must** be kept in step with the contracts. If you add an event or
+move a field between topic and data, update that map in the same change and add
+a case to `src/__tests__/events.test.ts`.
+
+## Commits and PRs
+
+Conventional commits, one logical change each:
+
+```
+feat(api): filter vouchers by expiry window
+fix(indexer): advance the cursor only after a batch commits
+test(events): cover an event with no data fields
+```
+
+- `npm run typecheck` and `npm test` must pass.
+- New endpoints need a test and a README entry.
+- Endpoints that return user data must require a specific filter. An unfiltered
+  dump invites scraping and will not be merged.
+
+## Wave program
+
+Issues carry `trivial` (100), `medium` (150) or `high` (200) complexity labels.
+Read the [Wave rules](https://docs.drips.network/wave/terms-and-rules/); untested
+or unreviewed LLM output is explicitly disallowed.
