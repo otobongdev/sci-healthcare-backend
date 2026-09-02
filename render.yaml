@@ -1,0 +1,63 @@
+# Render Blueprint for the SCI Healthcare indexer and API.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> point at this repo.
+# Everything below is provisioned together, so the only value you supply by
+# hand is CORS_ORIGIN once the frontend URL exists.
+
+databases:
+  - name: sci-healthcare-db
+    databaseName: sci_healthcare
+    user: sci
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: sci-healthcare-api
+    runtime: node
+    plan: free
+    # Same region as the database so the internal connection string is used
+    # and traffic never leaves Render's network.
+    region: oregon
+    branch: main
+    buildCommand: npm ci && ./scripts/use-postgres.sh && npx prisma generate && npm run build
+    # db push rather than migrate deploy: this repo has no migration history
+    # yet. Swapping to `prisma migrate deploy` is tracked as an open issue.
+    startCommand: npx prisma db push --skip-generate --accept-data-loss && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sci-healthcare-db
+          property: connectionString
+      - key: NODE_VERSION
+        value: "22"
+      - key: PORT
+        value: "8080"
+      - key: HOST
+        value: 0.0.0.0
+      - key: LOG_LEVEL
+        value: info
+      - key: STELLAR_NETWORK
+        value: testnet
+      - key: SOROBAN_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: NETWORK_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      - key: REGISTRY_CONTRACT_ID
+        value: CCY4K4FO3J4PHM7VQTTS4F5N5U3G7PJJQR5V7TGLYHGZQH2BQ2MQY77L
+      - key: VOUCHER_CONTRACT_ID
+        value: CBAOY2SQSMEIEQEITLZ3U3MER3K4ZBFQ5BTV5OCODAJINMXNOGLENC5I
+      - key: RECEIPT_CONTRACT_ID
+        value: CC25Q56WGEKNP4IDYOZK7BJJYD7JQ73JNCBAZIAEY4WCIVSUORQTS7PT
+      - key: USDC_CONTRACT_ID
+        value: CCKJV474HALEXYJC6URWG2QMUDPH5LY2SKAYA2S4TFHJTXW7OU4OAERQ
+      # Ledger the contracts were deployed at. Leaving this at 0 would start
+      # the indexer at the current tip and silently skip all prior history.
+      - key: INDEXER_START_LEDGER
+        value: "4466200"
+      - key: INDEXER_POLL_MS
+        value: "5000"
+      # Set to the Vercel URL after the frontend is deployed.
+      - key: CORS_ORIGIN
+        sync: false
