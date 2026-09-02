@@ -17,6 +17,16 @@ Indexes Soroban contract events from the [SCI Healthcare care-voucher protocol](
 
 The ledger is the source of truth. This service exists because a ledger cannot answer "show me every voucher this clinic is waiting on" without scanning it. Everything here is a projection: delete the database, replay from the deploy ledger, and you get the same rows back.
 
+<p align="center">
+  <a href="https://render.com/deploy?repo=https://github.com/otobongdev/sci-healthcare-backend">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" />
+  </a>
+</p>
+
+One click provisions the web service and its Postgres instance in the same
+region, with every contract id already set. The only value you add by hand is
+`CORS_ORIGIN`, once the frontend URL exists.
+
 ## Maintainers | [Telegram](https://t.me/YOUR_TELEGRAM_GROUP)
 
 <table align="center">
