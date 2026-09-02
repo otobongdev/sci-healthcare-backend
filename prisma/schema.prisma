@@ -1,0 +1,90 @@
+// SCI Healthcare — indexer schema.
+//
+// This database is a read model built from on-chain events. It is a cache,
+// never a source of truth: every row here can be rebuilt by replaying the
+// ledger. Nothing is written here that is not already public on chain,
+// which is what keeps a database breach from becoming a health-data breach.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite locally; switch to "postgresql" for deployment.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Provider {
+  address      String   @id
+  name         String
+  country      String
+  status       String   // Pending | Active | Suspended
+  registeredAt DateTime
+  updatedAt    DateTime @updatedAt
+
+  services Service[]
+  vouchers Voucher[]
+
+  @@index([status])
+  @@index([country])
+}
+
+model Service {
+  id       String  @id // "{providerAddress}:{code}"
+  code     Int
+  label    String
+  price    String  // i128 as decimal string; JS numbers cannot hold these
+  active   Boolean @default(true)
+
+  provider        Provider @relation(fields: [providerAddress], references: [address])
+  providerAddress String
+
+  @@unique([providerAddress, code])
+  @@index([code])
+}
+
+model Voucher {
+  id              String    @id // on-chain u64 as string
+  funder          String
+  beneficiaryRef  String    // opaque 32-byte hex. Not reversible to an identity.
+  serviceCode     Int
+  amount          String    // i128 as decimal string
+  status          String    // Funded | Claimed | Attested | Settled | Disputed | Refunded
+  createdAt       DateTime
+  expiresAt       DateTime
+  claimedAt       DateTime?
+  attestedAt      DateTime?
+  disputeDeadline DateTime?
+  settledNet      String?
+  settledFee      String?
+  updatedAt       DateTime  @updatedAt
+
+  provider        Provider @relation(fields: [providerAddress], references: [address])
+  providerAddress String
+
+  @@index([funder])
+  @@index([providerAddress])
+  @@index([beneficiaryRef])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Receipt {
+  voucherId       String   @id
+  beneficiaryRef  String
+  providerAddress String
+  serviceCode     Int
+  amount          String
+  settledAt       DateTime
+
+  @@index([beneficiaryRef])
+  @@index([providerAddress])
+}
+
+/// Single-row table tracking how far the indexer has replayed the ledger.
+model IndexerState {
+  id          Int      @id @default(1)
+  lastLedger  Int
+  updatedAt   DateTime @updatedAt
+}
