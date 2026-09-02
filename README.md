@@ -13,6 +13,11 @@
 
 # SCI Healthcare — Indexer &amp; API | [Documentation](https://otobongdev.github.io/sci-healthcare-contracts/)
 
+> **Live:** [App](https://sci-healthcare.vercel.app) · [API](https://sci-healthcare-api.onrender.com/stats) · [Docs](https://otobongdev.github.io/sci-healthcare-contracts/) · [Contracts on testnet](https://stellar.expert/explorer/testnet/contract/CBAOY2SQSMEIEQEITLZ3U3MER3K4ZBFQ5BTV5OCODAJINMXNOGLENC5I)
+>
+> The API runs on Render's free tier and sleeps after ~15 minutes idle; the first
+> request may take 30–60 seconds to wake it.
+
 Indexes Soroban contract events from the [SCI Healthcare care-voucher protocol](https://github.com/otobongdev/sci-healthcare-contracts) into a queryable read model, and serves it over a read-only HTTP API.
 
 The ledger is the source of truth. This service exists because a ledger cannot answer "show me every voucher this clinic is waiting on" without scanning it. Everything here is a projection: delete the database, replay from the deploy ledger, and you get the same rows back.
