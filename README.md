@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/sci-healthcare/sci-healthcare-backend/actions/workflows/ci.yml">
-    <img src="https://github.com/sci-healthcare/sci-healthcare-backend/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <a href="https://github.com/otobongdev/sci-healthcare-backend/actions/workflows/ci.yml">
+    <img src="https://github.com/otobongdev/sci-healthcare-backend/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
   <img src="https://img.shields.io/badge/node-22-green" alt="node 22" />
   <img src="https://img.shields.io/badge/fastify-5.12-black" alt="fastify" />
@@ -13,7 +13,7 @@
 
 # SCI Healthcare — Indexer &amp; API | [Documentation](https://sci-healthcare.gitbook.io/docs)
 
-Indexes Soroban contract events from the [SCI Healthcare care-voucher protocol](https://github.com/sci-healthcare/sci-healthcare-contracts) into a queryable read model, and serves it over a read-only HTTP API.
+Indexes Soroban contract events from the [SCI Healthcare care-voucher protocol](https://github.com/otobongdev/sci-healthcare-contracts) into a queryable read model, and serves it over a read-only HTTP API.
 
 The ledger is the source of truth. This service exists because a ledger cannot answer "show me every voucher this clinic is waiting on" without scanning it. Everything here is a projection: delete the database, replay from the deploy ledger, and you get the same rows back.
 
@@ -96,7 +96,7 @@ Amounts are `i128` on chain and are returned as **decimal strings**. Parsing one
 ## Quick start
 
 ```bash
-git clone https://github.com/sci-healthcare/sci-healthcare-backend
+git clone https://github.com/otobongdev/sci-healthcare-backend
 cd sci-healthcare-backend
 npm install
 cp .env.example .env          # fill in the contract ids below
@@ -143,8 +143,8 @@ Security reports go through [SECURITY.md](SECURITY.md).
 
 ## Contributors
 
-<a href="https://github.com/sci-healthcare/sci-healthcare-backend/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=sci-healthcare/sci-healthcare-backend" />
+<a href="https://github.com/otobongdev/sci-healthcare-backend/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=otobongdev/sci-healthcare-backend" />
 </a>
 
 ## License
